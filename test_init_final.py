@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*- 
 
-################ Server V12 #####################
+################ Server V13 #####################
 
 import os
 import sys
@@ -18,6 +18,7 @@ import re #정산
 import gspread #정산
 from oauth2client.service_account import ServiceAccountCredentials #정산
 from io import StringIO
+import urllib.request
 
 ##################### 로깅 ###########################
 log_stream = StringIO()    
@@ -404,6 +405,14 @@ async def task():
 			log_stream.truncate(0)
 			log_stream.seek(0)
 			await client.get_channel(channel).send( '< 디코접속에러! 잠깐 나갔다 올께요! >', tts=False)
+			for i in range(bossNum):
+				if bossMungFlag[i] == True:
+					bossTimeString[i] = tmp_bossTime[i].strftime('%H:%M:%S')
+					bossDateString[i] = tmp_bossTime[i].strftime('%Y-%m-%d')
+					bossFlag[i] = False
+					bossFlag0[i] = False
+					bossMungFlag[i] = False					
+			await dbSave()
 			raise SystemExit
 		
 		log_stream.truncate(0)
@@ -560,8 +569,18 @@ async def task():
 
 #mp3 파일 생성함수(gTTS 이용, 남성목소리)
 async def MakeSound(saveSTR, filename):
+	'''
 	tts = gTTS(saveSTR, lang = 'ko')
 	tts.save('./' + filename + '.mp3')
+	'''
+	try:
+		encText = urllib.parse.quote(saveSTR)
+		urllib.request.urlretrieve("https://clova.ai/proxy/voice/api/tts?text=" + encText + "%0A&voicefont=1&format=wav",filename + '.wav')
+	except Exception as e:
+		print (e)
+		tts = gTTS(saveSTR, lang = 'ko')
+		tts.save('./' + filename + '.wav')
+		pass
 
 #mp3 파일 재생함수	
 async def PlaySound(voiceclient, filename):
@@ -1222,6 +1241,11 @@ while True:
 					
 					bossData[i][6] = hello[len(tmp_msg):]
 					await client.get_channel(channel).send('< ' + bossData[i][0] + ' [ ' + bossData[i][6] + ' ] 메모등록 완료>', tts=False)
+					
+				if message.content.startswith(bossData[i][0] +'메모삭제'):
+					
+					bossData[i][6] = ''
+					await client.get_channel(channel).send('< ' + bossData[i][0] + ' 메모삭제 완료>', tts=False)
 
 			################ ?????????????? ################ 
 
@@ -1275,7 +1299,7 @@ while True:
 				command_list += command[10] + ' [인원] [금액]\n'     #!분배
 				command_list += command[11] + ' [뽑을인원수] [아이디1] [아이디2]...\n'     #!사다리
 				command_list += command[12] + ' [아이디]\n'     #!정산
-				command_list += command[13] + ' 또는 ' + command[14] + '0000, 00:00\n'     #!보스일괄
+				command_list += command[13] + ' 또는 ' + command[14] + ' 0000, 00:00\n'     #!보스일괄
 				command_list += command[14] + '\n'     #!q
 				command_list += command[15] + ' [할말]\n'     #!v
 				command_list += command[16] + '\n'     #!리젠
@@ -1330,7 +1354,7 @@ while True:
 				sayMessage = tmp_sayMessage[len(command[15])+1:]
 				await MakeSound(message.author.display_name +'님이.' + sayMessage, './sound/say')
 				await client.get_channel(channel).send("```< " + msg.author.display_name + " >님이 \"" + sayMessage + "\"```", tts=False)
-				await PlaySound(voice_client1, './sound/say.mp3')
+				await PlaySound(voice_client1, './sound/say.wav')
 
 			################ 보탐봇 재시작 ################ 
 
@@ -1491,7 +1515,7 @@ while True:
 			################ 보탐봇 기본 설정확인 ################ 
 
 			if message.content == command[1]:		
-				setting_val = '보탐봇버전 : Server Ver.12 (2019. 12. 18.)\n'
+				setting_val = '보탐봇버전 : Server Ver.13 (2019. 12. 23.)\n'
 				setting_val += '음성채널 : ' + client.get_channel(basicSetting[6]).name + '\n'
 				setting_val += '텍스트채널 : ' + client.get_channel(basicSetting[7]).name +'\n'
 				if basicSetting[8] != "" :
